@@ -60,3 +60,9 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Model checkpoints
+checkpoints/
+
+# Model configs
+configs/

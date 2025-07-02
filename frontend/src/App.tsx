@@ -1,4 +1,4 @@
-import { useState } from "react";
+import useStore from "./store";
 import axios from "axios";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
@@ -6,42 +6,30 @@ import { Label } from "./components/ui/label";
 import InteractiveCanvas from "./components/interactive-canvas";
 import SegmentationControls from "./components/segmentation-controls";
 
-interface Mask {
-  segment_id: number;
-  confidence: number;
-  mask: string;
-}
-
-interface ColorMap {
-  [color: string]: {
-    segment_id: number;
-    confidence: number;
-  };
-}
-
 function App() {
-  const [file, setFile] = useState<File | null>(null);
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
-  const [masks, setMasks] = useState<Mask[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pointsPerSide, setPointsPerSide] = useState(32);
-  const [predIoUThresh, setPredIoUThresh] = useState(0.88);
-  const [stabilityScoreThresh, setStabilityScoreThresh] = useState(0.95);
-  const [compositeMask, setCompositeMask] = useState<string | null>(null);
-  const [colorMap, setColorMap] = useState<ColorMap>({});
-  const [displayMode, setDisplayMode] = useState<"hover" | "composite">(
-    "hover"
-  );
-  const [compositeOpacity, setCompositeOpacity] = useState(0.5);
+  const {
+    file,
+    setFile,
+    setOriginalImage,
+    setMasks,
+    loading,
+    setLoading,
+    pointsPerSide,
+    predIoUThresh,
+    stabilityScoreThresh,
+    setCompositeMask,
+    setColorMap,
+    reset,
+    masks,
+    originalImage,
+  } = useStore();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const selectedFile = event.target.files[0];
+      reset();
       setFile(selectedFile);
       setOriginalImage(URL.createObjectURL(selectedFile));
-      setMasks([]);
-      setCompositeMask(null);
-      setColorMap({});
     }
   };
 
@@ -87,18 +75,7 @@ function App() {
           </div>
           <div className="flex flex-col space-y-4">
             <h2 className="text-lg font-semibold">Segmentation Controls</h2>
-            <SegmentationControls
-              pointsPerSide={pointsPerSide}
-              onPointsPerSideChange={setPointsPerSide}
-              predIoUThresh={predIoUThresh}
-              onPredIoUThreshChange={setPredIoUThresh}
-              stabilityScoreThresh={stabilityScoreThresh}
-              onStabilityScoreThreshChange={setStabilityScoreThresh}
-              displayMode={displayMode}
-              onDisplayModeChange={setDisplayMode}
-              compositeOpacity={compositeOpacity}
-              onCompositeOpacityChange={setCompositeOpacity}
-            />
+            <SegmentationControls />
           </div>
         </div>
       </div>
@@ -106,18 +83,9 @@ function App() {
       <div className="w-full max-w-6xl bg-card text-card-foreground rounded-lg shadow-xl p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col items-center justify-center bg-muted/40 p-4 rounded-md">
-            <h2 className="text-2xl font-semibold mb-4">
-              Interactive Canvas
-            </h2>
+            <h2 className="text-2xl font-semibold mb-4">Interactive Canvas</h2>
             {originalImage ? (
-              <InteractiveCanvas
-                originalImage={originalImage}
-                masks={masks}
-                compositeMask={compositeMask}
-                colorMap={colorMap}
-                displayMode={displayMode}
-                compositeOpacity={compositeOpacity}
-              />
+              <InteractiveCanvas />
             ) : (
               <div className="text-muted-foreground text-lg">
                 Please upload an image to start segmentation.

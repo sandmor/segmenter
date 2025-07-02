@@ -1,39 +1,17 @@
-import {
-  TransformWrapper,
-  TransformComponent,
-} from "react-zoom-pan-pinch";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import React, { useRef, useEffect, useState } from "react";
+import useStore from "../store";
+import { type Mask } from "../types";
 
-interface Mask {
-  segment_id: number;
-  confidence: number;
-  mask: string;
-}
-
-interface ColorMap {
-  [color: string]: {
-    segment_id: number;
-    confidence: number;
-  };
-}
-
-interface InteractiveCanvasProps {
-  originalImage: string;
-  masks: Mask[];
-  compositeMask: string | null;
-  colorMap: ColorMap;
-  displayMode: "hover" | "composite";
-  compositeOpacity: number;
-}
-
-const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
-  originalImage,
-  masks,
-  compositeMask,
-  colorMap,
-  displayMode,
-  compositeOpacity,
-}) => {
+const InteractiveCanvas: React.FC = () => {
+  const {
+    originalImage,
+    masks,
+    compositeMask,
+    colorMap,
+    displayMode,
+    compositeOpacity,
+  } = useStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredMask, setHoveredMask] = useState<Mask | null>(null);
   const [maskImages, setMaskImages] = useState<HTMLImageElement[]>([]);
@@ -64,7 +42,7 @@ const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !originalImage) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -130,9 +108,7 @@ const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
     const segmentInfo = colorMap[colorKey];
 
     if (segmentInfo) {
-      const mask = masks.find(
-        (m) => m.segment_id === segmentInfo.segment_id
-      );
+      const mask = masks.find((m) => m.segment_id === segmentInfo.segment_id);
       setHoveredMask(mask || null);
       setHoveredConfidence(segmentInfo.confidence);
     } else {

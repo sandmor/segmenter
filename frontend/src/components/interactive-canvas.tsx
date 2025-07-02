@@ -1,7 +1,7 @@
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import React, { useRef, useEffect, useState } from "react";
 import useStore from "../store";
 import { type Mask } from "../types";
+import { PixiApp } from "@/lib/pixi-app";
 
 const InteractiveCanvas: React.FC = () => {
   const {
@@ -9,131 +9,157 @@ const InteractiveCanvas: React.FC = () => {
     masks,
     compositeMask,
     colorMap,
-    displayMode,
+    displaySemanticMask,
     compositeOpacity,
   } = useStore();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hoveredMask, setHoveredMask] = useState<Mask | null>(null);
-  const [maskImages, setMaskImages] = useState<HTMLImageElement[]>([]);
-  const [compositeMaskImage, setCompositeMaskImage] =
-    useState<HTMLImageElement | null>(null);
+  const pixiContainerRef = useRef<HTMLDivElement>(null);
+  const appRef = useRef<PixiApp | null>(null);
+  const currentImageSrcRef = useRef<string | null>(null);
+  const initializingRef = useRef<boolean>(false);
+  const [highlightedRegionMask, setHighlightedRegionMask] =
+    useState<Mask | null>(null);
   const [hoveredConfidence, setHoveredConfidence] = useState<number | null>(
     null
   );
 
   useEffect(() => {
-    const imageElements = masks.map((mask) => {
-      const img = new Image();
-      img.src = `data:image/png;base64,${mask.mask}`;
-      return img;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (appRef.current && width > 0 && height > 0) {
+          appRef.current.updateMaxSize(width, height);
+        }
+      }
     });
-    setMaskImages(imageElements);
-  }, [masks]);
 
-  useEffect(() => {
-    if (compositeMask) {
-      const img = new Image();
-      img.src = `data:image/png;base64,${compositeMask}`;
-      img.onload = () => setCompositeMaskImage(img);
-    } else {
-      setCompositeMaskImage(null);
+    if (pixiContainerRef.current) {
+      resizeObserver.observe(pixiContainerRef.current);
     }
-  }, [compositeMask]);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !originalImage) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const initOrUpdatePixi = async () => {
+      if (initializingRef.current) return;
+      if (!originalImage || !pixiContainerRef.current) return;
+      if (!appRef.current) {
+        initializingRef.current = true;
 
-    const image = new Image();
-    image.src = originalImage;
-    image.onload = () => {
-      canvas.width = image.width;
-      canvas.height = image.height;
-      ctx.drawImage(image, 0, 0);
+        try {
+          const containerRect =
+            pixiContainerRef.current.getBoundingClientRect();
+          const maxWidth = containerRect.width || 800; // fallback
+          const maxHeight = containerRect.height || 600; // fallback
 
-      if (displayMode === "composite" && compositeMaskImage) {
-        ctx.globalAlpha = compositeOpacity;
-        ctx.drawImage(compositeMaskImage, 0, 0);
-        ctx.globalAlpha = 1.0;
-      } else if (displayMode === "hover" && hoveredMask) {
-        const hoveredMaskIndex = masks.findIndex(
-          (mask) => mask.segment_id === hoveredMask.segment_id
-        );
-        const hoveredMaskImage = maskImages[hoveredMaskIndex];
-        if (hoveredMaskImage) {
-          ctx.globalAlpha = 0.5;
-          ctx.drawImage(hoveredMaskImage, 0, 0);
-          ctx.globalAlpha = 1.0;
+          appRef.current = new PixiApp();
+          await appRef.current.init({
+            baseImage: originalImage,
+            maxWidth,
+            maxHeight,
+            containerRef: pixiContainerRef.current,
+          });
+
+          currentImageSrcRef.current = originalImage;
+        } catch (error) {
+          console.error("Failed to initialize Pixi:", error);
+        } finally {
+          initializingRef.current = false;
+        }
+      } else {
+        if (currentImageSrcRef.current !== originalImage && originalImage) {
+          // Update with responsive sizing
+          if (pixiContainerRef.current) {
+            const containerRect =
+              pixiContainerRef.current.getBoundingClientRect();
+            appRef.current.updateMaxSize(
+              containerRect.width,
+              containerRect.height
+            );
+          }
+
+          appRef.current.updateBaseImage(originalImage);
+          currentImageSrcRef.current = originalImage;
+        }
+
+        if (highlightedRegionMask) {
+          // Update highlighted region mask
+          await appRef.current.highlightRegion(highlightedRegionMask.mask);
+        } else {
+          // Clear highlighted region mask
+          await appRef.current.clearHighlightedRegion();
+        }
+
+        // Update semantic mask sprite
+        if (compositeMask) {
+          appRef.current.setSemanticMask(compositeMask, {
+            visible: displaySemanticMask,
+            opacity: compositeOpacity,
+          });
         }
       }
     };
+
+    initOrUpdatePixi();
   }, [
     originalImage,
-    hoveredMask,
-    maskImages,
-    masks,
-    displayMode,
-    compositeMaskImage,
     compositeOpacity,
+    highlightedRegionMask,
+    compositeMask,
+    masks,
+    colorMap,
+    displaySemanticMask,
   ]);
 
-  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !compositeMaskImage) {
-      setHoveredMask(null);
+  const handleMouseMove = async (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!appRef.current || !pixiContainerRef.current || !compositeMask) return;
+
+    const canvas = appRef.current.getCanvas();
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / canvasRect.width;
+    const scaleY = canvas.height / canvasRect.height;
+
+    const canvasX = (event.clientX - canvasRect.left) * scaleX;
+    const canvasY = (event.clientY - canvasRect.top) * scaleY;
+
+    const pixel = await appRef.current.sampleSemanticMask(canvasX, canvasY);
+    if (!pixel) {
+      setHighlightedRegionMask(null);
       setHoveredConfidence(null);
+      console.error("No pixel data found at the mouse position");
       return;
     }
 
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = Math.round((event.clientX - rect.left) * scaleX);
-    const y = Math.round((event.clientY - rect.top) * scaleY);
-
-    const offscreenCanvas = document.createElement("canvas");
-    offscreenCanvas.width = canvas.width;
-    offscreenCanvas.height = canvas.height;
-    const offscreenCtx = offscreenCanvas.getContext("2d", {
-      willReadFrequently: true,
-    });
-    if (!offscreenCtx) return;
-
-    offscreenCtx.drawImage(compositeMaskImage, 0, 0);
-    const pixelData = offscreenCtx.getImageData(x, y, 1, 1).data;
-    const colorKey = `(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
-
+    const colorKey = `(${pixel.r}, ${pixel.g}, ${pixel.b})`;
     const segmentInfo = colorMap[colorKey];
 
     if (segmentInfo) {
       const mask = masks.find((m) => m.segment_id === segmentInfo.segment_id);
-      setHoveredMask(mask || null);
+      setHighlightedRegionMask(mask || null);
       setHoveredConfidence(segmentInfo.confidence);
     } else {
-      setHoveredMask(null);
+      setHighlightedRegionMask(null);
       setHoveredConfidence(null);
     }
   };
 
   const handleMouseLeave = () => {
-    setHoveredMask(null);
+    setHighlightedRegionMask(null);
     setHoveredConfidence(null);
   };
 
   return (
-    <div className="relative">
-      <TransformWrapper>
-        <TransformComponent>
-          <canvas
-            ref={canvasRef}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            className="max-w-full h-auto"
-          />
-        </TransformComponent>
-      </TransformWrapper>
+    <div className="relative w-full h-full">
+      <div
+        ref={pixiContainerRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="w-full h-full flex items-center justify-center"
+        style={{ minHeight: "400px" }} // Ensure minimum height
+      />
       {hoveredConfidence !== null && (
         <div className="absolute top-0 left-0 p-2 bg-black bg-opacity-50 text-white rounded">
           <p className="text-white text-sm">

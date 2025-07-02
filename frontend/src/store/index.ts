@@ -18,7 +18,7 @@ interface AppState {
   stabilityScoreThresh: number;
   compositeMask: string | null;
   colorMap: ColorMap;
-  displayMode: "hover" | "composite";
+  displaySemanticMask: boolean;
   compositeOpacity: number;
   setFile: (file: File | null) => void;
   setOriginalImage: (image: string | null) => void;
@@ -29,7 +29,7 @@ interface AppState {
   setStabilityScoreThresh: (thresh: number) => void;
   setCompositeMask: (mask: string | null) => void;
   setColorMap: (map: ColorMap) => void;
-  setDisplayMode: (mode: "hover" | "composite") => void;
+  setDisplaySemanticMask: (display: boolean) => void;
   setCompositeOpacity: (opacity: number) => void;
   reset: () => void;
 }
@@ -44,7 +44,7 @@ const useStore = create<AppState>((set) => ({
   stabilityScoreThresh: 0.95,
   compositeMask: null,
   colorMap: {},
-  displayMode: "hover",
+  displaySemanticMask: true,
   compositeOpacity: 0.5,
   setFile: (file) => set({ file }),
   setOriginalImage: (image) => set({ originalImage: image }),
@@ -55,7 +55,7 @@ const useStore = create<AppState>((set) => ({
   setStabilityScoreThresh: (thresh) => set({ stabilityScoreThresh: thresh }),
   setCompositeMask: (mask) => set({ compositeMask: mask }),
   setColorMap: (map) => set({ colorMap: map }),
-  setDisplayMode: (mode) => set({ displayMode: mode }),
+  setDisplaySemanticMask: (display) => set({ displaySemanticMask: display }),
   setCompositeOpacity: (opacity) => set({ compositeOpacity: opacity }),
   reset: () =>
     set({

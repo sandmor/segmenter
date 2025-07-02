@@ -29,7 +29,14 @@ function App() {
       const selectedFile = event.target.files[0];
       reset();
       setFile(selectedFile);
-      setOriginalImage(URL.createObjectURL(selectedFile));
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setOriginalImage(e.target.result as string);
+        }
+      };
+      reader.readAsDataURL(selectedFile);
     }
   };
 

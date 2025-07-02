@@ -12,10 +12,10 @@ const SegmentationControls: React.FC = () => {
     setPredIoUThresh,
     stabilityScoreThresh,
     setStabilityScoreThresh,
-    displayMode,
-    setDisplayMode,
     compositeOpacity,
     setCompositeOpacity,
+    displaySemanticMask,
+    setDisplaySemanticMask,
   } = useStore();
 
   return (
@@ -71,20 +71,14 @@ const SegmentationControls: React.FC = () => {
         <Label className="text-right">Display Mode</Label>
         <div className="col-span-3 flex gap-2">
           <Button
-            variant={displayMode === "hover" ? "secondary" : "outline"}
-            onClick={() => setDisplayMode("hover")}
+            variant={displaySemanticMask ? "secondary" : "outline"}
+            onClick={() => setDisplaySemanticMask(!displaySemanticMask)}
           >
-            Hover
-          </Button>
-          <Button
-            variant={displayMode === "composite" ? "secondary" : "outline"}
-            onClick={() => setDisplayMode("composite")}
-          >
-            Composite
+            Semantic Mask
           </Button>
         </div>
       </div>
-      {displayMode === "composite" && (
+      {displaySemanticMask && (
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="composite-opacity" className="text-right">
             Composite Opacity

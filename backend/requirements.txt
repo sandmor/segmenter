@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 pydantic
 python-multipart
+python-dotenv
 pillow
 numpy
 torch

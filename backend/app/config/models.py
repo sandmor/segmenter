@@ -12,19 +12,19 @@ class ModelConfig:
     MODEL_MAPPINGS = {
         "tiny": {
             "config": "configs/sam2.1/sam2.1_hiera_t.yaml",
-            "checkpoint": "checkpoints/sam2.1_hiera_tiny.pt",
+            "checkpoint": "../checkpoints/sam2.1_hiera_tiny.pt",
         },
         "small": {
             "config": "configs/sam2.1/sam2.1_hiera_s.yaml", 
-            "checkpoint": "checkpoints/sam2.1_hiera_small.pt",
+            "checkpoint": "../checkpoints/sam2.1_hiera_small.pt",
         },
         "base_plus": {
             "config": "configs/sam2.1/sam2.1_hiera_b+.yaml",
-            "checkpoint": "checkpoints/sam2.1_hiera_base_plus.pt", 
+            "checkpoint": "../checkpoints/sam2.1_hiera_base_plus.pt", 
         },
         "large": {
             "config": "configs/sam2.1/sam2.1_hiera_l.yaml",
-            "checkpoint": "checkpoints/sam2.1_hiera_large.pt",
+            "checkpoint": "../checkpoints/sam2.1_hiera_large.pt",
         }
     }
     

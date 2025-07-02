@@ -1,27 +1,41 @@
-# Exit immediately if a command exits with a non-zero status.
+#!/bin/bash
 set -e
 
-# Define URLs and destination paths
-CONFIG_URL="https://raw.githubusercontent.com/facebookresearch/sam2/main/sam2/configs/sam2.1/sam2.1_hiera_t.yaml"
-MODEL_URL="https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt"
+MODEL=${1:-${MODEL:-tiny}}
 
-CONFIG_DIR="configs/sam2.1"
-CHECKPOINT_DIR="checkpoints"
+declare -A CONFIGS=(
+    [tiny]="sam2.1_hiera_t.yaml"
+    [small]="sam2.1_hiera_s.yaml"
+    [base_plus]="sam2.1_hiera_b+.yaml"
+    [large]="sam2.1_hiera_l.yaml"
+)
+declare -A URLS=(
+    [tiny]="https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt"
+    [small]="https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_small.pt"
+    [base_plus]="https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_base_plus.pt"
+    [large]="https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt"
+)
 
-CONFIG_DEST="$CONFIG_DIR/sam2.1_hiera_t.yaml"
-CHECKPOINT_DEST="$CHECKPOINT_DIR/sam2.1_hiera_tiny.pt"
+if [[ ! ${CONFIGS[$MODEL]} ]]; then
+    echo "Error: Invalid model: '$MODEL'. Choose from: ${!CONFIGS[@]}" >&2
+    exit 1
+fi
 
-# Create directories if they don't exist
-echo "Creating directories..."
-mkdir -p "$CONFIG_DIR"
-mkdir -p "$CHECKPOINT_DIR"
+CONFIG_FILE=${CONFIGS[$MODEL]}
+MODEL_URL=${URLS[$MODEL]}
 
-# Download the config file
-echo "Downloading config file to $CONFIG_DEST..."
-wget -O "$CONFIG_DEST" "$CONFIG_URL"
+CONFIG_DEST="configs/sam2.1/$CONFIG_FILE"
+CHECKPOINT_DEST="checkpoints/$(basename "$MODEL_URL")"
 
-# Download the model checkpoint
-echo "Downloading model checkpoint to $CHECKPOINT_DEST..."
-wget -O "$CHECKPOINT_DEST" "$MODEL_URL"
+mkdir -p "$(dirname "$CONFIG_DEST")" "$(dirname "$CHECKPOINT_DEST")"
 
-echo "Download complete."
+if [ ! -f "$CONFIG_DEST" ]; then
+    curl -sL "https://raw.githubusercontent.com/facebookresearch/sam2/main/sam2/configs/sam2.1/$CONFIG_FILE" -o "$CONFIG_DEST"
+fi
+
+if [ ! -f "$CHECKPOINT_DEST" ]; then
+    echo "Downloading SAM2 model: $MODEL..."
+    curl -L --progress-bar "$MODEL_URL" -o "$CHECKPOINT_DEST"
+fi
+
+echo "Model '$MODEL' is ready."

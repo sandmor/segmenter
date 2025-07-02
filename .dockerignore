@@ -1,0 +1,35 @@
+# Node modules
+node_modules/
+frontend/node_modules/
+
+# Development files
+.git/
+.gitignore
+*.md
+.env
+.env.local
+.env.development
+
+# Build artifacts
+frontend/dist/
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

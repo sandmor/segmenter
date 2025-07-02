@@ -1,6 +1,7 @@
 import base64
 import time
-from typing import Dict, Any
+import os
+from typing import Dict, Any, Optional
 import numpy as np
 from PIL import Image
 import io
@@ -8,20 +9,27 @@ import colorsys
 
 from sam2.build_sam import build_sam2
 from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+from ..config import ModelConfig
 
 class SAM2Service:
-    def __init__(self, model_cfg: str = "configs/sam2.1/sam2.1_hiera_t.yaml", checkpoint_path: str = "../checkpoints/sam2.1_hiera_tiny.pt"):
+    def __init__(self, model_variant: Optional[str] = None):
         self.model = None
-        self.model_cfg = model_cfg
+        config_path, checkpoint_path = ModelConfig.get_model_paths(model_variant)
+        device = ModelConfig.get_device()
+        self.model_cfg = config_path
         self.checkpoint_path = checkpoint_path
+        self.device = device
+        model_name = model_variant or os.getenv("MODEL", "tiny")
+        print(f"Initializing SAM2 model: {model_name} on {self.device}")
         self._load_model()
 
     def _load_model(self):
         try:
-            self.model = build_sam2(self.model_cfg, self.checkpoint_path, device="cpu")
-            print(f"Model loaded successfully with config: {self.model_cfg}")
+            self.model = build_sam2(self.model_cfg, self.checkpoint_path, device=self.device)
+            print("SAM2 model loaded successfully.")
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"Error loading SAM2 model: {e}")
+            print("Please ensure models are downloaded by running './download_models.sh'")
             raise
 
     def _generate_colors(self, num_colors: int):

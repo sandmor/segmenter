@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  segmenter:
+    build: .
+    container_name: segmenter-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:8000"
+    environment:
+      - PORT=${PORT:-8000}
+      - MODEL=${MODEL:-tiny}
+      - DEVICE=${DEVICE:-cpu}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,https://localhost}
+    volumes:
+      - ./checkpoints:/app/checkpoints
+      - ./configs:/app/configs
+      - ./ssl:/app/ssl  # For SSL certificates
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

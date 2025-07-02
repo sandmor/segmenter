@@ -1,4 +1,9 @@
 fastapi
 uvicorn[standard]
-python-dotenv
 pydantic
+python-multipart
+pillow
+numpy
+torch
+torchvision
+git+https://github.com/facebookresearch/segment-anything-2.git

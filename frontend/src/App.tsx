@@ -12,6 +12,13 @@ interface Mask {
   mask: string;
 }
 
+interface ColorMap {
+  [color: string]: {
+    segment_id: number;
+    confidence: number;
+  };
+}
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -20,6 +27,12 @@ function App() {
   const [pointsPerSide, setPointsPerSide] = useState(32);
   const [predIoUThresh, setPredIoUThresh] = useState(0.88);
   const [stabilityScoreThresh, setStabilityScoreThresh] = useState(0.95);
+  const [compositeMask, setCompositeMask] = useState<string | null>(null);
+  const [colorMap, setColorMap] = useState<ColorMap>({});
+  const [displayMode, setDisplayMode] = useState<"hover" | "composite">(
+    "hover"
+  );
+  const [compositeOpacity, setCompositeOpacity] = useState(0.5);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -27,6 +40,8 @@ function App() {
       setFile(selectedFile);
       setOriginalImage(URL.createObjectURL(selectedFile));
       setMasks([]);
+      setCompositeMask(null);
+      setColorMap({});
     }
   };
 
@@ -46,6 +61,8 @@ function App() {
         formData
       );
       setMasks(response.data.segments);
+      setCompositeMask(response.data.composite_mask);
+      setColorMap(response.data.color_map);
     } catch (error) {
       console.error("Error segmenting image:", error);
     } finally {
@@ -77,6 +94,10 @@ function App() {
               onPredIoUThreshChange={setPredIoUThresh}
               stabilityScoreThresh={stabilityScoreThresh}
               onStabilityScoreThreshChange={setStabilityScoreThresh}
+              displayMode={displayMode}
+              onDisplayModeChange={setDisplayMode}
+              compositeOpacity={compositeOpacity}
+              onCompositeOpacityChange={setCompositeOpacity}
             />
           </div>
         </div>
@@ -86,10 +107,17 @@ function App() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col items-center justify-center bg-muted/40 p-4 rounded-md">
             <h2 className="text-2xl font-semibold mb-4">
-              Original Image with Hovered Mask
+              Interactive Canvas
             </h2>
             {originalImage ? (
-              <InteractiveCanvas originalImage={originalImage} masks={masks} />
+              <InteractiveCanvas
+                originalImage={originalImage}
+                masks={masks}
+                compositeMask={compositeMask}
+                colorMap={colorMap}
+                displayMode={displayMode}
+                compositeOpacity={compositeOpacity}
+              />
             ) : (
               <div className="text-muted-foreground text-lg">
                 Please upload an image to start segmentation.

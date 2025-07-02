@@ -4,6 +4,7 @@ from typing import Dict, Any
 import numpy as np
 from PIL import Image
 import io
+import colorsys
 
 from sam2.build_sam import build_sam2
 from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
@@ -17,11 +18,19 @@ class SAM2Service:
 
     def _load_model(self):
         try:
-            self.model = build_sam2(self.model_cfg, self.checkpoint_path)
+            self.model = build_sam2(self.model_cfg, self.checkpoint_path, device="cpu")
             print(f"Model loaded successfully with config: {self.model_cfg}")
         except Exception as e:
             print(f"Error loading model: {e}")
             raise
+
+    def _generate_colors(self, num_colors: int):
+        colors = []
+        for i in range(num_colors):
+            hue = i / num_colors
+            rgb = colorsys.hls_to_rgb(hue, 0.5, 1.0)
+            colors.append(tuple(int(c * 255) for c in rgb))
+        return colors
 
     def auto_segment(self, image_bytes: bytes,
                      points_per_side: int,
@@ -43,27 +52,54 @@ class SAM2Service:
         )
 
         masks = mask_generator.generate(image_array)
+        
+        if not masks:
+            return {
+                "segments": [],
+                "processing_time": round(time.time() - start_time, 3),
+                "composite_mask": "",
+                "color_map": {},
+            }
 
         segments = []
+        colors = self._generate_colors(len(masks))
+        color_map = {}
+        
+        composite_image = np.zeros((image_array.shape[0], image_array.shape[1], 3), dtype=np.uint8)
+
         for i, mask_data in enumerate(masks):
             mask = mask_data["segmentation"]
             confidence = mask_data.get("predicted_iou", 0.0)
+            segment_id = i
+            color = colors[i]
 
-            segment_data = self._process_mask(mask, confidence, i)
-
+            segment_data = self._process_mask(mask, confidence, segment_id)
             segment_data.update({
                 "stability_score": mask_data.get("stability_score", 0.0),
                 "predicted_iou": mask_data.get("predicted_iou", 0.0),
             })
             segments.append(segment_data)
-        
+            
+            composite_image[mask] = color
+            color_map[str(color)] = {
+                "segment_id": segment_id,
+                "confidence": round(float(confidence), 4),
+            }
+
         segments.sort(key=lambda x: x["confidence"], reverse=True)
+
+        composite_pil = Image.fromarray(composite_image)
+        composite_buffer = io.BytesIO()
+        composite_pil.save(composite_buffer, format="PNG")
+        composite_b64 = base64.b64encode(composite_buffer.getvalue()).decode("utf-8")
 
         processing_time = time.time() - start_time
 
         return {
             "segments": segments,
             "processing_time": round(processing_time, 3),
+            "composite_mask": composite_b64,
+            "color_map": color_map,
         }
 
     def _process_mask(self, mask: np.ndarray, confidence: float, segment_id: int) -> Dict[str, Any]:

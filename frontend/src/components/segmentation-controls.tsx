@@ -1,6 +1,7 @@
 import React from "react";
 import { Slider } from "./ui/slider";
 import { Label } from "./ui/label";
+import { Button } from "./ui/button";
 
 interface SegmentationControlsProps {
   pointsPerSide: number;
@@ -9,6 +10,10 @@ interface SegmentationControlsProps {
   onPredIoUThreshChange: (value: number) => void;
   stabilityScoreThresh: number;
   onStabilityScoreThreshChange: (value: number) => void;
+  displayMode: "hover" | "composite";
+  onDisplayModeChange: (mode: "hover" | "composite") => void;
+  compositeOpacity: number;
+  onCompositeOpacityChange: (value: number) => void;
 }
 
 const SegmentationControls: React.FC<SegmentationControlsProps> = ({
@@ -18,6 +23,10 @@ const SegmentationControls: React.FC<SegmentationControlsProps> = ({
   onPredIoUThreshChange,
   stabilityScoreThresh,
   onStabilityScoreThreshChange,
+  displayMode,
+  onDisplayModeChange,
+  compositeOpacity,
+  onCompositeOpacityChange,
 }) => {
   return (
     <div className="grid gap-4 py-4">
@@ -66,6 +75,40 @@ const SegmentationControls: React.FC<SegmentationControlsProps> = ({
         />
         <span className="col-span-1 text-left">{stabilityScoreThresh.toFixed(2)}</span>
       </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">Display Mode</Label>
+        <div className="col-span-3 flex gap-2">
+          <Button
+            variant={displayMode === "hover" ? "secondary" : "outline"}
+            onClick={() => onDisplayModeChange("hover")}
+          >
+            Hover
+          </Button>
+          <Button
+            variant={displayMode === "composite" ? "secondary" : "outline"}
+            onClick={() => onDisplayModeChange("composite")}
+          >
+            Composite
+          </Button>
+        </div>
+      </div>
+      {displayMode === "composite" && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="composite-opacity" className="text-right">
+            Composite Opacity
+          </Label>
+          <Slider
+            id="composite-opacity"
+            min={0.0}
+            max={1.0}
+            step={0.1}
+            value={[compositeOpacity]}
+            onValueChange={(value) => onCompositeOpacityChange(value[0])}
+            className="col-span-3"
+          />
+          <span className="col-span-1 text-left">{compositeOpacity.toFixed(1)}</span>
+        </div>
+      )}
     </div>
   );
 };

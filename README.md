@@ -21,7 +21,7 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
 1.  **Clone the repository:**
 
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/sandmor/segmenter
     cd segmenter
     ```
 

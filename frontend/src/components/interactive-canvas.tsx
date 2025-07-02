@@ -1,3 +1,7 @@
+import {
+  TransformWrapper,
+  TransformComponent,
+} from "react-zoom-pan-pinch";
 import React, { useRef, useEffect, useState } from "react";
 
 interface Mask {
@@ -144,12 +148,16 @@ const InteractiveCanvas: React.FC<InteractiveCanvasProps> = ({
 
   return (
     <div className="relative">
-      <canvas
-        ref={canvasRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className="max-w-full h-auto"
-      />
+      <TransformWrapper>
+        <TransformComponent>
+          <canvas
+            ref={canvasRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            className="max-w-full h-auto"
+          />
+        </TransformComponent>
+      </TransformWrapper>
       {hoveredConfidence !== null && (
         <div className="absolute top-0 left-0 p-2 bg-black bg-opacity-50 text-white rounded">
           <p className="text-white text-sm">

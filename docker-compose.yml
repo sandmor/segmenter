@@ -12,6 +12,7 @@ services:
       - MODEL=${MODEL:-tiny}
       - DEVICE=${DEVICE:-cpu}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,https://localhost}
+      - CHECKPOINT_DIR=/app/checkpoints
     volumes:
       - ./checkpoints:/app/checkpoints
       - ./configs:/app/configs
@@ -22,3 +23,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    # Uncomment the following lines to enable GPU acceleration
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]

@@ -49,7 +49,14 @@ class ModelConfig:
             raise ValueError(f"Invalid model variant '{model_variant}'. Available: {available}")
             
         config = cls.MODEL_MAPPINGS[model_variant]
-        return config["config"], config["checkpoint"]
+        checkpoint_path = config["checkpoint"]
+
+        checkpoint_dir = os.getenv("CHECKPOINT_DIR")
+        if checkpoint_dir:
+            filename = os.path.basename(checkpoint_path)
+            checkpoint_path = os.path.join(checkpoint_dir, filename)
+
+        return config["config"], checkpoint_path
     
     @classmethod
     def get_device(cls) -> str:

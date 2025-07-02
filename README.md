@@ -70,6 +70,28 @@ The recommended deployment method is using the provided script, which relies on 
     - **Local:** `http://localhost`
     - **Production:** `http://your-domain.com`
 
+## GPU Acceleration
+
+To enable GPU acceleration for the model, you need to have the NVIDIA Container Toolkit installed on your system.
+
+Once you have the toolkit installed, you can enable GPU support by uncommenting the following lines in `docker-compose.yml`:
+
+```yaml
+# deploy:
+#   resources:
+#     reservations:
+#       devices:
+#         - driver: nvidia
+#           count: 1
+#           capabilities: [gpu]
+```
+
+You will also need to set the `DEVICE` environment variable to `cuda` in your `.env` file:
+
+```
+DEVICE=cuda
+```
+
 ## Environment Variables
 
 Create a `.env` file to configure the application. See `.env.example` for available options.

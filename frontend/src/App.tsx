@@ -3,6 +3,7 @@ import axios from "axios";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
+import InteractiveCanvas from "./components/interactive-canvas";
 
 interface Mask {
   segment_id: number;
@@ -57,16 +58,11 @@ function App() {
       </Button>
 
       <div className="flex flex-wrap mt-4">
-        {originalImage && (
-          <div className="w-1/2 p-2">
-            <h2 className="text-xl font-semibold mb-2">Original Image</h2>
-            <img
-              src={originalImage}
-              alt="Original"
-              className="max-w-full h-auto"
-            />
-          </div>
-        )}
+        <div className="w-1/2 p-2">
+          {originalImage && (
+            <InteractiveCanvas originalImage={originalImage} masks={masks} />
+          )}
+        </div>
         <div className="w-1/2 p-2">
           <h2 className="text-xl font-semibold mb-2">Masks</h2>
           <div className="grid grid-cols-3 gap-2">

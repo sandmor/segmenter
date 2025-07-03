@@ -25,7 +25,14 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
     cd segmenter
     ```
 
-2.  **Download AI models:**
+2.  **Set up environment variables:**
+    Copy the example `.env` file and customize it as needed.
+
+    ```bash
+    cp .env.example .env
+    ```
+
+3.  **Download AI models:**
     This will download the default `tiny` model.
 
     ```bash
@@ -38,13 +45,13 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
     ./download_models.sh large
     ```
 
-3.  **Install dependencies:**
+4.  **Install dependencies:**
 
     ```bash
     pnpm install:all
     ```
 
-4.  **Start development servers:**
+5.  **Start development servers:**
     ```bash
     pnpm run dev
     ```

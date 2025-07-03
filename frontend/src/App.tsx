@@ -26,7 +26,7 @@ function App() {
   } = useStore();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
+    if (event.target.files && event.target.files.length > 0) {
       const selectedFile = event.target.files[0];
       reset();
       setFile(selectedFile);
@@ -67,42 +67,53 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center p-4">
-      <h1 className="text-4xl font-extrabold text-foreground mb-6">
-        Image Segmentation
-      </h1>
-
-      <div className="w-full max-w-6xl bg-card text-card-foreground rounded-lg shadow-xl p-6 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div className="flex flex-col space-y-4">
-            <Label htmlFor="picture">Upload Picture</Label>
-            <Input id="picture" type="file" onChange={handleFileChange} />
-            <Button onClick={handleSegment} disabled={!file || loading}>
-              {loading ? "Segmenting..." : "Upload and Segment"}
-            </Button>
-          </div>
-          <div className="flex flex-col space-y-4">
-            <h2 className="text-lg font-semibold">Segmentation Controls</h2>
-            <SegmentationControls />
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full max-w-6xl bg-card text-card-foreground rounded-lg shadow-xl p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex flex-col items-center justify-center bg-muted/40 p-4 rounded-md">
-            <h2 className="text-2xl font-semibold mb-4">Interactive Canvas</h2>
+    <div className="h-screen bg-background flex flex-col">
+      <header className="p-4 border-b shrink-0">
+        <h1 className="text-2xl font-bold text-foreground">
+          Image Segmentation
+        </h1>
+      </header>
+      <div className="flex flex-1 overflow-hidden">
+        <main className="flex-1 p-4 overflow-auto">
+          <div className="w-full h-full bg-card text-card-foreground rounded-lg shadow-xl flex items-center justify-center">
             {originalImage ? (
               <InteractiveCanvas />
             ) : (
-              <div className="text-muted-foreground text-lg">
-                Please upload an image to start segmentation.
+              <div className="text-muted-foreground text-lg text-center p-8">
+                <p>Please upload an image to start segmentation.</p>
+                <p className="text-sm">
+                  Use the controls on the right sidebar.
+                </p>
               </div>
             )}
           </div>
-          <div className="flex flex-col bg-muted/40 p-4 rounded-md">
-            <h2 className="text-2xl font-semibold mb-4">Generated Masks</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto max-h-[500px] p-2">
+        </main>
+        <aside className="w-96 bg-card text-card-foreground border-l p-4 overflow-y-auto space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Controls</h2>
+            <div className="space-y-4 p-4 border rounded-lg">
+              <Label htmlFor="picture">Upload Picture</Label>
+              <Input id="picture" type="file" onChange={handleFileChange} />
+              <Button
+                onClick={handleSegment}
+                disabled={!file || loading}
+                className="w-full"
+              >
+                {loading ? "Segmenting..." : "Upload and Segment"}
+              </Button>
+            </div>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-4">
+              Segmentation Parameters
+            </h2>
+            <div className="p-4 border rounded-lg">
+              <SegmentationControls />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Generated Masks</h2>
+            <div className="grid grid-cols-2 gap-4 p-2 border rounded-lg max-h-96 overflow-y-auto">
               {masks.length > 0 ? (
                 masks.map((mask) => (
                   <div
@@ -122,13 +133,13 @@ function App() {
                   </div>
                 ))
               ) : (
-                <div className="col-span-full text-muted-foreground text-lg text-center">
-                  No masks generated yet. Upload an image and segment it.
+                <div className="col-span-full text-muted-foreground text-center py-4">
+                  No masks generated yet.
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </aside>
       </div>
       <DownloadDialog />
     </div>

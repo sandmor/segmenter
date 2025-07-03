@@ -9,6 +9,7 @@ interface PixiAppConfig {
 
 export class PixiApp {
   private app: Application;
+  private onMaskClick: (mask: Sprite, segmentId: number) => void = () => {};
 
   constructor() {
     this.app = new Application();
@@ -37,7 +38,6 @@ export class PixiApp {
 
     config.containerRef.appendChild(this.app.canvas);
 
-    // Scale the stage to fit the display dimensions
     const scale = Math.min(
       displayWidth / imageSprite.width,
       displayHeight / imageSprite.height
@@ -46,13 +46,19 @@ export class PixiApp {
 
     this.app.stage.addChild(imageSprite);
 
-    const highlightedRegionContainer = new Container();
-    highlightedRegionContainer.label = "highlightedRegionContainer";
-    this.app.stage.addChild(highlightedRegionContainer);
+    const maskContainer = new Container();
+    maskContainer.label = "maskContainer";
+    this.app.stage.addChild(maskContainer);
 
     this.app.canvas.style.maxWidth = "100%";
     this.app.canvas.style.maxHeight = "100%";
     this.app.canvas.style.objectFit = "contain";
+  }
+
+  public setOnMaskClick(
+    callback: (mask: Sprite, segmentId: number) => void
+  ): void {
+    this.onMaskClick = callback;
   }
 
   public async updateBaseImage(newImage: string): Promise<void> {
@@ -67,9 +73,9 @@ export class PixiApp {
     baseImageSprite.texture = imageTexture;
   }
 
-  public async highlightRegion(mask: string): Promise<void> {
-    const hightlightedRegionContainer = this.app.stage.getChildByLabel(
-      "highlightedRegionContainer"
+  public async addMask(mask: string, segmentId: number): Promise<void> {
+    const maskContainer = this.app.stage.getChildByLabel(
+      "maskContainer"
     ) as Container;
 
     const regionMaskTexture = await Assets.load(
@@ -77,19 +83,87 @@ export class PixiApp {
     );
     const regionMaskSprite = new Sprite(regionMaskTexture);
     regionMaskSprite.alpha = 0.5;
-    regionMaskSprite.label = "highlightedRegion";
+    regionMaskSprite.label = "mask";
+    regionMaskSprite.eventMode = "static";
+    regionMaskSprite.cursor = "pointer";
 
-    hightlightedRegionContainer.removeChildren();
-    hightlightedRegionContainer.addChild(regionMaskSprite);
+    regionMaskSprite.on("pointerdown", () => {
+      this.onMaskClick(regionMaskSprite, segmentId);
+    });
+
+    maskContainer.removeChildren();
+    maskContainer.addChild(regionMaskSprite);
   }
 
-  public async clearHighlightedRegion(): Promise<void> {
-    const highlightedRegionContainer = this.app.stage.getChildByLabel(
-      "highlightedRegionContainer"
+  public async clearMasks(): Promise<void> {
+    const maskContainer = this.app.stage.getChildByLabel(
+      "maskContainer"
     ) as Container;
-    if (highlightedRegionContainer) {
-      highlightedRegionContainer.removeChildren();
+    if (maskContainer) {
+      maskContainer.removeChildren();
     }
+  }
+
+  public async generateSegmentImage(
+    mask: Sprite,
+    crop?: boolean
+  ): Promise<string> {
+    const baseImage = this.app.stage.getChildByLabel("baseImage") as Sprite;
+    if (!baseImage) {
+      throw new Error("Base image not found");
+    }
+
+    const container = new Container();
+    const clonedBase = new Sprite(baseImage.texture);
+    const clonedMask = new Sprite(mask.texture);
+
+    clonedBase.mask = clonedMask;
+    container.addChild(clonedBase);
+    container.addChild(clonedMask);
+
+    const frame = crop ? this.getBoundingBoxFromMask(clonedMask) : undefined;
+
+    const texture = this.app.renderer.generateTexture({
+      target: container,
+      frame,
+    });
+    const extract = this.app.renderer.extract;
+    const dataUrl = await extract.base64(new Sprite(texture));
+
+    texture.destroy();
+    container.destroy({ children: true });
+
+    return dataUrl;
+  }
+
+  private getBoundingBoxFromMask(mask: Sprite) {
+    const texture = mask.texture;
+    const { pixels } = this.app.renderer.extract.pixels(mask);
+    const width = texture.width;
+    const height = texture.height;
+
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = (y * width + x) * 4;
+        const r = pixels[index];
+        const g = pixels[index + 1];
+        const b = pixels[index + 2];
+
+        if (r > 0 || g > 0 || b > 0) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    return new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
   }
 
   public async setSemanticMask(
@@ -118,7 +192,6 @@ export class PixiApp {
       }
       if (options.opacity !== undefined) {
         semanticMaskSprite.alpha = options.opacity;
-        console.log(`Setting semantic mask opacity to ${options.opacity}`);
       }
     }
   }
@@ -158,24 +231,18 @@ export class PixiApp {
       return null;
     }
 
-    // Convert screen coordinates to texture coordinates
     const scaledX = Math.round(x / this.app.stage.scale.x);
     const scaledY = Math.round(y / this.app.stage.scale.y);
 
-    // Get texture dimensions
     const textureWidth = semanticMaskSprite.texture.width;
     const textureHeight = semanticMaskSprite.texture.height;
 
-    // Ensure coordinates are within bounds
     if (
       scaledX < 0 ||
       scaledX >= textureWidth ||
       scaledY < 0 ||
       scaledY >= textureHeight
     ) {
-      console.warn(
-        `Coordinates out of bounds: (${scaledX}, ${scaledY}) vs (${textureWidth}x${textureHeight})`
-      );
       return null;
     }
 
@@ -196,7 +263,6 @@ export class PixiApp {
     x: number,
     y: number
   ): Promise<{ r: number; g: number; b: number } | null> {
-    // Create a temporary container for clean rendering
     const tempContainer = new Container();
     const tempSprite = new Sprite(sprite.texture);
 
@@ -232,11 +298,9 @@ export class PixiApp {
     let displayWidth, displayHeight;
 
     if (imageAspectRatio > containerAspectRatio) {
-      // Image is wider relative to container
       displayWidth = maxWidth;
       displayHeight = maxWidth / imageAspectRatio;
     } else {
-      // Image is taller relative to container
       displayHeight = maxHeight;
       displayWidth = maxHeight * imageAspectRatio;
     }
@@ -248,11 +312,9 @@ export class PixiApp {
     const imageSprite = this.app.stage.getChildByLabel("image") as Sprite;
     if (!imageSprite || !imageSprite.texture) return;
 
-    // Get original image dimensions
     const originalWidth = imageSprite.texture.width;
     const originalHeight = imageSprite.texture.height;
 
-    // Calculate responsive dimensions that fit within the max size
     const { displayWidth, displayHeight } = this.calculateResponsiveDimensions(
       originalWidth,
       originalHeight,
@@ -260,18 +322,14 @@ export class PixiApp {
       maxHeight
     );
 
-    // Calculate scale factor to fit original content into display dimensions
     const scaleX = displayWidth / originalWidth;
     const scaleY = displayHeight / originalHeight;
     const scale = Math.min(scaleX, scaleY);
 
-    // Apply scaling to the entire stage
     this.app.stage.scale.set(scale);
 
-    // Resize renderer to match the calculated display dimensions
     this.app.renderer.resize(displayWidth, displayHeight);
 
-    // Update canvas styling to ensure it fits properly
     const canvas = this.app.canvas;
     canvas.style.maxWidth = "100%";
     canvas.style.maxHeight = "100%";

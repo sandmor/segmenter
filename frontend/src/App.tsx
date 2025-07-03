@@ -5,6 +5,7 @@ import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import InteractiveCanvas from "./components/interactive-canvas";
 import SegmentationControls from "./components/segmentation-controls";
+import { DownloadDialog } from "./components/download-dialog";
 
 function App() {
   const {
@@ -129,6 +130,7 @@ function App() {
           </div>
         </div>
       </div>
+      <DownloadDialog />
     </div>
   );
 }

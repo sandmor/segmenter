@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import useStore from "../store";
 import { type Mask } from "../types";
 import { PixiApp } from "@/lib/pixi-app";
+import * as PIXI from "pixi.js";
 
 const InteractiveCanvas: React.FC = () => {
   const {
@@ -11,16 +12,27 @@ const InteractiveCanvas: React.FC = () => {
     colorMap,
     displaySemanticMask,
     compositeOpacity,
+    setPixiApp,
+    setSelectedMask,
+    setIsDownloadDialogOpen,
+    setMaskDataURL,
   } = useStore();
   const pixiContainerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PixiApp | null>(null);
   const currentImageSrcRef = useRef<string | null>(null);
   const initializingRef = useRef<boolean>(false);
+
+  const masksRef = useRef<Mask[]>(masks);
+
   const [highlightedRegionMask, setHighlightedRegionMask] =
     useState<Mask | null>(null);
   const [hoveredConfidence, setHoveredConfidence] = useState<number | null>(
     null
   );
+
+  useEffect(() => {
+    masksRef.current = masks;
+  }, [masks]);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
@@ -54,14 +66,29 @@ const InteractiveCanvas: React.FC = () => {
           const maxWidth = containerRect.width || 800; // fallback
           const maxHeight = containerRect.height || 600; // fallback
 
-          appRef.current = new PixiApp();
-          await appRef.current.init({
+          const app = new PixiApp();
+          await app.init({
             baseImage: originalImage,
             maxWidth,
             maxHeight,
             containerRef: pixiContainerRef.current,
           });
 
+          app.setOnMaskClick(
+            (clickedMaskSprite: PIXI.Sprite, segmentId: number) => {
+              const apiMask = masksRef.current.find(
+                (m) => m.segment_id === segmentId
+              );
+              if (apiMask) {
+                setMaskDataURL(`data:image/png;base64,${apiMask.mask}`);
+              }
+              setSelectedMask(clickedMaskSprite);
+              setIsDownloadDialogOpen(true);
+            }
+          );
+
+          appRef.current = app;
+          setPixiApp(app);
           currentImageSrcRef.current = originalImage;
         } catch (error) {
           console.error("Failed to initialize Pixi:", error);
@@ -70,7 +97,6 @@ const InteractiveCanvas: React.FC = () => {
         }
       } else {
         if (currentImageSrcRef.current !== originalImage && originalImage) {
-          // Update with responsive sizing
           if (pixiContainerRef.current) {
             const containerRect =
               pixiContainerRef.current.getBoundingClientRect();
@@ -85,14 +111,14 @@ const InteractiveCanvas: React.FC = () => {
         }
 
         if (highlightedRegionMask) {
-          // Update highlighted region mask
-          await appRef.current.highlightRegion(highlightedRegionMask.mask);
+          await appRef.current.addMask(
+            highlightedRegionMask.mask,
+            highlightedRegionMask.segment_id
+          );
         } else {
-          // Clear highlighted region mask
-          await appRef.current.clearHighlightedRegion();
+          await appRef.current.clearMasks();
         }
 
-        // Update semantic mask sprite
         if (compositeMask) {
           appRef.current.setSemanticMask(compositeMask, {
             visible: displaySemanticMask,
@@ -111,6 +137,10 @@ const InteractiveCanvas: React.FC = () => {
     masks,
     colorMap,
     displaySemanticMask,
+    setPixiApp,
+    setSelectedMask,
+    setIsDownloadDialogOpen,
+    setMaskDataURL,
   ]);
 
   const handleMouseMove = async (event: React.MouseEvent<HTMLDivElement>) => {
@@ -129,7 +159,6 @@ const InteractiveCanvas: React.FC = () => {
     if (!pixel) {
       setHighlightedRegionMask(null);
       setHoveredConfidence(null);
-      console.error("No pixel data found at the mouse position");
       return;
     }
 
@@ -158,7 +187,7 @@ const InteractiveCanvas: React.FC = () => {
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className="w-full h-full flex items-center justify-center"
-        style={{ minHeight: "400px" }} // Ensure minimum height
+        style={{ minHeight: "400px" }}
       />
       {hoveredConfidence !== null && (
         <div className="absolute top-0 left-0 p-2 bg-black bg-opacity-50 text-white rounded">

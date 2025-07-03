@@ -52,10 +52,7 @@ function App() {
     formData.append("stability_score_thresh", stabilityScoreThresh.toString());
 
     try {
-      const response = await axios.post(
-        "http://localhost:8000/api/v1/segment/auto",
-        formData
-      );
+      const response = await axios.post("/api/v1/segment/auto", formData);
       setMasks(response.data.segments);
       setCompositeMask(response.data.composite_mask);
       setColorMap(response.data.color_map);

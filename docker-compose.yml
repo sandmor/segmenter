@@ -9,7 +9,7 @@ services:
       - "${PORT:-80}:8000"
     environment:
       - PORT=${PORT:-8000}
-      - MODEL=${MODEL:-tiny}
+      - SAM2_MODEL=${SAM2_MODEL:-tiny}
       - DEVICE=${DEVICE:-cpu}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,https://localhost}
       - CHECKPOINT_DIR=/app/checkpoints

@@ -14,7 +14,8 @@ interface AppState {
   file: File | null;
   originalImage: string | null;
   masks: Mask[];
-  loading: boolean;
+  isSegmenting: boolean;
+  isMatting: boolean;
   pointsPerSide: number;
   predIoUThresh: number;
   stabilityScoreThresh: number;
@@ -26,10 +27,13 @@ interface AppState {
   isDownloadDialogOpen: boolean;
   pixiApp: PixiApp | null;
   selectedMask: PIXI.Sprite | null;
+  applyAlphaMatting: boolean;
+  downloadType: "mask" | "segment" | "cutout";
   setFile: (file: File | null) => void;
   setOriginalImage: (image: string | null) => void;
   setMasks: (masks: Mask[]) => void;
-  setLoading: (loading: boolean) => void;
+  setIsSegmenting: (isSegmenting: boolean) => void;
+  setIsMatting: (isMatting: boolean) => void;
   setPointsPerSide: (points: number) => void;
   setPredIoUThresh: (thresh: number) => void;
   setStabilityScoreThresh: (thresh: number) => void;
@@ -41,6 +45,8 @@ interface AppState {
   setIsDownloadDialogOpen: (isOpen: boolean) => void;
   setPixiApp: (pixiApp: PixiApp | null) => void;
   setSelectedMask: (mask: PIXI.Sprite | null) => void;
+  setApplyAlphaMatting: (apply: boolean) => void;
+  setDownloadType: (type: "mask" | "segment" | "cutout") => void;
   reset: () => void;
 }
 
@@ -48,7 +54,8 @@ const useStore = create<AppState>((set) => ({
   file: null,
   originalImage: null,
   masks: [],
-  loading: false,
+  isSegmenting: false,
+  isMatting: false,
   pointsPerSide: 32,
   predIoUThresh: 0.88,
   stabilityScoreThresh: 0.95,
@@ -60,10 +67,13 @@ const useStore = create<AppState>((set) => ({
   isDownloadDialogOpen: false,
   pixiApp: null,
   selectedMask: null,
+  applyAlphaMatting: true,
+  downloadType: "cutout",
   setFile: (file) => set({ file }),
   setOriginalImage: (image) => set({ originalImage: image }),
   setMasks: (masks) => set({ masks }),
-  setLoading: (loading) => set({ loading }),
+  setIsSegmenting: (isSegmenting) => set({ isSegmenting }),
+  setIsMatting: (isMatting) => set({ isMatting }),
   setPointsPerSide: (points) => set({ pointsPerSide: points }),
   setPredIoUThresh: (thresh) => set({ predIoUThresh: thresh }),
   setStabilityScoreThresh: (thresh) => set({ stabilityScoreThresh: thresh }),
@@ -75,6 +85,8 @@ const useStore = create<AppState>((set) => ({
   setIsDownloadDialogOpen: (isOpen) => set({ isDownloadDialogOpen: isOpen }),
   setPixiApp: (pixiApp) => set({ pixiApp }),
   setSelectedMask: (mask) => set({ selectedMask: mask }),
+  setApplyAlphaMatting: (apply) => set({ applyAlphaMatting: apply }),
+  setDownloadType: (type) => set({ downloadType: type }),
   reset: () =>
     set({
       file: null,

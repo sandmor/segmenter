@@ -5,6 +5,8 @@ python-multipart
 python-dotenv
 pillow
 numpy
+opencv-python
 torch
 torchvision
 git+https://github.com/facebookresearch/segment-anything-2.git
+transformers

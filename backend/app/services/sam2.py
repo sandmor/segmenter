@@ -19,7 +19,7 @@ class SAM2Service:
         self.model_cfg = config_path
         self.checkpoint_path = checkpoint_path
         self.device = device
-        model_name = model_variant or os.getenv("MODEL", "tiny")
+        model_name = model_variant or os.getenv("SAM2_MODEL", "tiny")
         print(f"Initializing SAM2 model: {model_name} on {self.device}")
         self._load_model()
 

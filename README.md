@@ -32,7 +32,7 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
     cp .env.example .env
     ```
 
-3.  **Download AI models:**
+3.  **Download SAM2 models:**
     This will download the default `tiny` model.
 
     ```bash
@@ -54,6 +54,32 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
 5.  **Start development servers:**
     ```bash
     pnpm run dev
+    ```
+
+## Running with Docker Compose
+
+After cloning the repository, setting up your `.env` file, and downloading the models, you can run the application using Docker Compose.
+
+1.  **Build and run the container:**
+
+    ```bash
+    docker-compose up --build -d
+    ```
+
+    This will start the application in the background.
+
+2.  **Access the application:**
+    Open your browser and navigate to `http://localhost`. The port can be changed in your `.env` file.
+
+3.  **Follow the logs:**
+
+    ```bash
+    docker-compose logs -f
+    ```
+
+4.  **Stop the application:**
+    ```bash
+    docker-compose down
     ```
 
 ## Deployment

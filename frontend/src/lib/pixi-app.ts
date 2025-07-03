@@ -104,6 +104,11 @@ export class PixiApp {
     }
   }
 
+  public async createSpriteFromBase64(base64Data: string): Promise<Sprite> {
+    const texture = await Assets.load(`data:image/png;base64,${base64Data}`);
+    return new Sprite(texture);
+  }
+
   public async generateSegmentImage(
     mask: Sprite,
     crop?: boolean

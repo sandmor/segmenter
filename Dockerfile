@@ -48,29 +48,29 @@ USER app
 
 # Create startup script with better error handling
 RUN echo '#!/bin/bash\n\
-set -e\n\
-cd /app\n\
-\n\
-# Function to check if model exists\n\
-check_model() {\n\
-    local model_variant=${MODEL:-tiny}\n\
+    set -e\n\
+    cd /app\n\
+    \n\
+    # Function to check if model exists\n\
+    check_model() {\n\
+    local model_variant=${SAM2_MODEL:-tiny}\n\
     local checkpoint_file="checkpoints/sam2.1_hiera_${model_variant}.pt"\n\
     if [ "$model_variant" = "base_plus" ]; then\n\
-        checkpoint_file="checkpoints/sam2.1_hiera_base_plus.pt"\n\
+    checkpoint_file="checkpoints/sam2.1_hiera_base_plus.pt"\n\
     fi\n\
     echo "$checkpoint_file"\n\
-}\n\
-\n\
-# Download models if needed\n\
-checkpoint_file=$(check_model)\n\
-if [ ! -f "$checkpoint_file" ]; then\n\
-    echo "Downloading model: ${MODEL:-tiny}"\n\
-    ./download_models.sh "${MODEL:-tiny}"\n\
-fi\n\
-\n\
-# Start the application\n\
-# Start the application
-exec uvicorn backend.app.main:app --host 0.0.0.0 --port 8000' > start.sh && chmod +x start.sh
+    }\n\
+    \n\
+    # Download models if needed\n\
+    checkpoint_file=$(check_model)\n\
+    if [ ! -f "$checkpoint_file" ]; then\n\
+    echo "Downloading model: ${SAM2_MODEL:-tiny}"\n\
+    ./download_models.sh "${SAM2_MODEL:-tiny}"\n\
+    fi\n\
+    \n\
+    # Start the application\n\
+    # Start the application
+    exec uvicorn backend.app.main:app --host 0.0.0.0 --port 8000' > start.sh && chmod +x start.sh
 
 # Expose port
 EXPOSE 8000

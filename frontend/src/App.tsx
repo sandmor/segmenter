@@ -13,8 +13,8 @@ function App() {
     setFile,
     setOriginalImage,
     setMasks,
-    loading,
-    setLoading,
+    isSegmenting,
+    setIsSegmenting,
     pointsPerSide,
     predIoUThresh,
     stabilityScoreThresh,
@@ -44,7 +44,7 @@ function App() {
   const handleSegment = async () => {
     if (!file) return;
 
-    setLoading(true);
+        setIsSegmenting(true);
     const formData = new FormData();
     formData.append("file", file);
     formData.append("points_per_side", pointsPerSide.toString());
@@ -58,8 +58,8 @@ function App() {
       setColorMap(response.data.color_map);
     } catch (error) {
       console.error("Error segmenting image:", error);
-    } finally {
-      setLoading(false);
+        } finally {
+      setIsSegmenting(false);
     }
   };
 
@@ -93,10 +93,10 @@ function App() {
               <Input id="picture" type="file" onChange={handleFileChange} />
               <Button
                 onClick={handleSegment}
-                disabled={!file || loading}
+                disabled={!file || isSegmenting}
                 className="w-full"
               >
-                {loading ? "Segmenting..." : "Upload and Segment"}
+                {isSegmenting ? "Segmenting..." : "Upload and Segment"}
               </Button>
             </div>
           </div>

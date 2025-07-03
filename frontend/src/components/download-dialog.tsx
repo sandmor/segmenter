@@ -8,6 +8,11 @@ import {
 import { Button } from "./ui/button";
 import { downloadImage } from "@/lib/utils";
 import useStore from "@/store";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
+import axios from "axios";
+import { dataURLtoFile } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 export function DownloadDialog() {
   const {
@@ -16,22 +21,69 @@ export function DownloadDialog() {
     pixiApp,
     selectedMask,
     maskDataURL,
+    applyAlphaMatting,
+    setApplyAlphaMatting,
+    file,
+    isMatting,
+    setIsMatting,
+    downloadType,
+    setDownloadType,
   } = useStore();
 
-  const handleDownload = async (type: "mask" | "segment" | "cutout") => {
+  const handleDownload = async () => {
     if (!pixiApp) return;
 
+    if (applyAlphaMatting && file && maskDataURL) {
+      setIsMatting(true);
+      const formData = new FormData();
+      formData.append("image", file);
+      const maskFile = dataURLtoFile(maskDataURL, "mask.png");
+      formData.append("mask", maskFile);
+
+      try {
+        const response = await axios.post(
+          "/api/v1/segment/vitmatte",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        const alphaMatte = response.data.alpha_matte;
+
+        if (downloadType === "mask") {
+          const dataUrl = `data:image/png;base64,${alphaMatte}`;
+          downloadImage(dataUrl, "alpha_mask_matted.png");
+        } else if (downloadType === "segment" || downloadType === "cutout") {
+          const sprite = await pixiApp.createSpriteFromBase64(alphaMatte);
+          const dataUrl = await pixiApp.generateSegmentImage(
+            sprite,
+            downloadType === "cutout"
+          );
+          downloadImage(dataUrl, `${downloadType}_matted.png`);
+        }
+      } catch (error) {
+        console.error("Error applying alpha matting:", error);
+      } finally {
+        setIsMatting(false);
+        setIsDownloadDialogOpen(false);
+      }
+      return;
+    }
+
+    // Fallback for no matting
     let dataUrl: string | null = null;
     let filename: string = "download.png";
 
-    switch (type) {
+    switch (downloadType) {
       case "mask":
         dataUrl = maskDataURL;
         filename = "mask.png";
         break;
       case "segment":
         if (selectedMask) {
-          dataUrl = await pixiApp.generateSegmentImage(selectedMask);
+          dataUrl = await pixiApp.generateSegmentImage(selectedMask, false);
           filename = "segment.png";
         }
         break;
@@ -59,26 +111,47 @@ export function DownloadDialog() {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <Button
-            onClick={() => handleDownload("mask")}
-            disabled={!maskDataURL}
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="alpha-matting"
+              checked={applyAlphaMatting}
+              onCheckedChange={setApplyAlphaMatting}
+            />
+            <Label htmlFor="alpha-matting">Apply Alpha Matting</Label>
+          </div>
+          <RadioGroup
+            value={downloadType}
+            onValueChange={(value) =>
+              setDownloadType(value as "mask" | "segment" | "cutout")
+            }
+            className="flex flex-col gap-2"
           >
-            Download Alpha Mask
-          </Button>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="mask" id="mask" />
+              <Label htmlFor="mask">Alpha Mask</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="segment" id="segment" />
+              <Label htmlFor="segment">Segment</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="cutout" id="cutout" />
+              <Label htmlFor="cutout">Cutout</Label>
+            </div>
+          </RadioGroup>
           <Button
-            onClick={() => handleDownload("segment")}
-            disabled={!selectedMask}
+            onClick={handleDownload}
+            disabled={
+              isMatting ||
+              (downloadType !== "mask" && !selectedMask) ||
+              (downloadType === "mask" && !maskDataURL)
+            }
           >
-            Download Segment
-          </Button>
-          <Button
-            onClick={() => handleDownload("cutout")}
-            disabled={!selectedMask}
-          >
-            Download Cutout
+            {isMatting ? "Matting..." : "Download"}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+

@@ -28,6 +28,7 @@ export function DownloadDialog() {
     setIsMatting,
     downloadType,
     setDownloadType,
+    matteParams,
   } = useStore();
 
   const handleDownload = async () => {
@@ -39,29 +40,38 @@ export function DownloadDialog() {
       formData.append("image", file);
       const maskFile = dataURLtoFile(maskDataURL, "mask.png");
       formData.append("mask", maskFile);
+      formData.append(
+        "erosion_kernel_size",
+        matteParams.erosion_kernel_size.toString()
+      );
+      formData.append(
+        "dilation_kernel_size",
+        matteParams.dilation_kernel_size.toString()
+      );
+      formData.append("max_size", matteParams.max_size.toString());
+      formData.append("algorithm", matteParams.algorithm);
 
       try {
-        const response = await axios.post(
-          "/api/v1/segment/vitmatte",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        const response = await axios.post("/api/v1/segment/matte", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          responseType: "json",
+        });
         const alphaMatte = response.data.alpha_matte;
 
         if (downloadType === "mask") {
           const dataUrl = `data:image/png;base64,${alphaMatte}`;
           downloadImage(dataUrl, "alpha_mask_matted.png");
-        } else if (downloadType === "segment" || downloadType === "cutout") {
-          const sprite = await pixiApp.createSpriteFromBase64(alphaMatte);
-          const dataUrl = await pixiApp.generateSegmentImage(
-            sprite,
-            downloadType === "cutout"
+        } else if (downloadType === "segment") {
+          const dataUrl = `data:image/png;base64,${response.data.foreground}`;
+          downloadImage(dataUrl, "segment_matted.png");
+        } else if (downloadType === "cutout") {
+          const sprite = await pixiApp.createSpriteFromBase64(
+            response.data.foreground
           );
-          downloadImage(dataUrl, `${downloadType}_matted.png`);
+          const dataUrl = await pixiApp.cropImage(sprite);
+          downloadImage(dataUrl, "cutout_matted.png");
         }
       } catch (error) {
         console.error("Error applying alpha matting:", error);
@@ -154,4 +164,3 @@ export function DownloadDialog() {
     </Dialog>
   );
 }
-

@@ -3,7 +3,8 @@ import cv2
 from PIL import Image
 import io
 import base64
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Literal
+from scipy.ndimage import binary_erosion
 
 class TrimapGenerationService:
     """Service for generating trimaps from binary masks."""
@@ -45,7 +46,7 @@ class TrimapGenerationService:
         trimap[(background == 255) & (foreground == 0)] = 128  # Unknown region
         
         return trimap
-    
+
     @staticmethod
     def resize_image(image: np.ndarray, max_size: int = 1024) -> Tuple[np.ndarray, Tuple[int, int]]:
         """
@@ -73,36 +74,36 @@ class TrimapGenerationService:
         return resized, original_size
     
     @staticmethod
-    def encode_results(original: np.ndarray, trimap: np.ndarray, 
-                      alpha: np.ndarray) -> Dict[str, str]:
+    def encode_results(image: np.ndarray, trimap: np.ndarray, 
+                       alpha_matte: np.ndarray, foreground: np.ndarray) -> Dict[str, str]:
         """
-        Encode results as base64 strings.
+        Encode results to base64 strings.
         
         Args:
-            original: Original image
-            trimap: Generated trimap
-            alpha: Alpha matte
+            image: Original image (H, W, 3)
+            trimap: Trimap (H, W)
+            alpha_matte: Alpha matte (H, W)
+            foreground: Foreground image (H, W, 3)
             
         Returns:
-            Dictionary with base64 encoded results
+            Dictionary with base64 encoded images
         """
-        results = {}
+        def encode_image(img_array, mode="RGB"):
+            # Ensure the array is in the correct format
+            if img_array.dtype != np.uint8:
+                if mode == "RGB" or mode == "RGBA":
+                    img_array = np.clip(img_array * 255, 0, 255).astype(np.uint8)
+                else:
+                    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+            
+            img_pil = Image.fromarray(img_array, mode=mode)
+            buffer = io.BytesIO()
+            img_pil.save(buffer, format="PNG")
+            return base64.b64encode(buffer.getvalue()).decode("utf-8")
         
-        # Original image
-        original_pil = Image.fromarray(original)
-        original_buffer = io.BytesIO()
-        original_pil.save(original_buffer, format="PNG")
-        results["original_image"] = base64.b64encode(original_buffer.getvalue()).decode("utf-8")
-        
-        # Trimap
-        trimap_pil = Image.fromarray(trimap)
-        trimap_buffer = io.BytesIO()
-        trimap_pil.save(trimap_buffer, format="PNG")
-        results["trimap"] = base64.b64encode(trimap_buffer.getvalue()).decode("utf-8")
-        
-        # Alpha matte
-        alpha_pil = Image.fromarray(alpha)
-        alpha_buffer = io.BytesIO()
-        alpha_pil.save(alpha_buffer, format="PNG")
-        results["alpha_matte"] = base64.b64encode(alpha_buffer.getvalue()).decode("utf-8")
-        return results
+        return {
+            "original_image": encode_image(image, "RGB"),
+            "trimap": encode_image(trimap, "L"),
+            "alpha_matte": encode_image(alpha_matte, "L"),
+            "foreground": encode_image(foreground, "RGBA")
+        }

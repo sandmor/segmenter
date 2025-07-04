@@ -109,6 +109,32 @@ export class PixiApp {
     return new Sprite(texture);
   }
 
+  public async cropImage(image: Sprite): Promise<string> {
+    const baseImage = this.app.stage.getChildByLabel("baseImage") as Sprite;
+    if (!baseImage) {
+      throw new Error("Base image not found");
+    }
+
+    const container = new Container();
+    const clonedSprite = new Sprite(image.texture);
+
+    container.addChild(clonedSprite);
+
+    const frame = this.getBoundingBoxForImage(clonedSprite);
+
+    const texture = this.app.renderer.generateTexture({
+      target: container,
+      frame,
+    });
+    const extract = this.app.renderer.extract;
+    const dataUrl = await extract.base64(new Sprite(texture));
+
+    texture.destroy();
+    container.destroy({ children: true });
+
+    return dataUrl;
+  }
+
   public async generateSegmentImage(
     mask: Sprite,
     crop?: boolean
@@ -126,7 +152,7 @@ export class PixiApp {
     container.addChild(clonedBase);
     container.addChild(clonedMask);
 
-    const frame = crop ? this.getBoundingBoxFromMask(clonedMask) : undefined;
+    const frame = crop ? this.getBoundingBoxForImage(clonedMask) : undefined;
 
     const texture = this.app.renderer.generateTexture({
       target: container,
@@ -141,7 +167,7 @@ export class PixiApp {
     return dataUrl;
   }
 
-  private getBoundingBoxFromMask(mask: Sprite) {
+  private getBoundingBoxForImage(mask: Sprite) {
     const texture = mask.texture;
     const { pixels } = this.app.renderer.extract.pixels(mask);
     const width = texture.width;
@@ -158,8 +184,9 @@ export class PixiApp {
         const r = pixels[index];
         const g = pixels[index + 1];
         const b = pixels[index + 2];
+        const a = pixels[index + 3];
 
-        if (r > 0 || g > 0 || b > 0) {
+        if (r > 0 || g > 0 || b > 0 || a) {
           minX = Math.min(minX, x);
           minY = Math.min(minY, y);
           maxX = Math.max(maxX, x);

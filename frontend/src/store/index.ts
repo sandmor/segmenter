@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type Mask } from "../types";
+import { type Mask, type MatteParams } from "../types";
 import { PixiApp } from "@/lib/pixi-app";
 import * as PIXI from "pixi.js";
 
@@ -28,6 +28,7 @@ interface AppState {
   pixiApp: PixiApp | null;
   selectedMask: PIXI.Sprite | null;
   applyAlphaMatting: boolean;
+  matteParams: MatteParams;
   downloadType: "mask" | "segment" | "cutout";
   setFile: (file: File | null) => void;
   setOriginalImage: (image: string | null) => void;
@@ -46,6 +47,7 @@ interface AppState {
   setPixiApp: (pixiApp: PixiApp | null) => void;
   setSelectedMask: (mask: PIXI.Sprite | null) => void;
   setApplyAlphaMatting: (apply: boolean) => void;
+  setMatteParams: (params: Partial<MatteParams>) => void;
   setDownloadType: (type: "mask" | "segment" | "cutout") => void;
   reset: () => void;
 }
@@ -68,6 +70,12 @@ const useStore = create<AppState>((set) => ({
   pixiApp: null,
   selectedMask: null,
   applyAlphaMatting: true,
+  matteParams: {
+    erosion_kernel_size: 10,
+    dilation_kernel_size: 10,
+    max_size: 1024,
+    algorithm: "cf",
+  },
   downloadType: "cutout",
   setFile: (file) => set({ file }),
   setOriginalImage: (image) => set({ originalImage: image }),
@@ -86,6 +94,8 @@ const useStore = create<AppState>((set) => ({
   setPixiApp: (pixiApp) => set({ pixiApp }),
   setSelectedMask: (mask) => set({ selectedMask: mask }),
   setApplyAlphaMatting: (apply) => set({ applyAlphaMatting: apply }),
+  setMatteParams: (params) =>
+    set((state) => ({ matteParams: { ...state.matteParams, ...params } })),
   setDownloadType: (type) => set({ downloadType: type }),
   reset: () =>
     set({

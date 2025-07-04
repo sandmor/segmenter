@@ -1,13 +1,25 @@
 # Segmenter
 
-AI-powered image segmentation application using Meta's SAM2 (Segment Anything Model 2).
+AI-powered image segmentation application using Meta's SAM2 (Segment Anything Model 2) for automatic segmentation and various classical and AI-based matting algorithms.
 
 ## Features
 
-- Interactive image segmentation via file upload.
-- Powered by Meta's SAM2 model for high accuracy.
-- Color-coded segmentation masks with confidence scores.
-- Web interface built with React.
+- **Automatic Segmentation:**
+  - Uses Meta's SAM2 model to automatically find and segment all objects in an image.
+  - Adjustable parameters: `points_per_side`, `pred_iou_thresh`, `stability_score_thresh`.
+- **Matte Generation:**
+  - Generates high-quality alpha mattes from an image and a mask.
+  - Supports multiple matting algorithms:
+    - **ViTMatte:** A vision transformers based approach.
+    - **Classical & Learning-Based Algorithms (via `pymatting`):**
+      - `cf`: Closed-Form Matting
+      - `knn`: KNN Matting
+      - `lbdm`: Learning-Based Digital Matting
+      - `lkm`: Large Kernel Matting
+  - Adjustable parameters: `erosion_kernel_size`, `dilation_kernel_size`, `max_size`.
+- **Web Interface:**
+  - Built with React and PIXI.js for interactive visualization.
+  - Allows users to upload images, view segmentation masks, and download results.
 
 ## Quick Start
 
@@ -15,6 +27,7 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
 
 - Docker and Docker Compose
 - Git
+- Node.js and pnpm (for local development)
 
 ### Local Development
 
@@ -32,8 +45,8 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
     cp .env.example .env
     ```
 
-3.  **Download SAM2 models:**
-    This will download the default `tiny` model.
+3.  **Download Models:**
+    This will download the default `tiny` SAM2 model.
 
     ```bash
     ./download_models.sh
@@ -55,6 +68,7 @@ AI-powered image segmentation application using Meta's SAM2 (Segment Anything Mo
     ```bash
     pnpm run dev
     ```
+    This will start the backend on port 8000 and the frontend on port 5173.
 
 ## Running with Docker Compose
 
@@ -65,8 +79,6 @@ After cloning the repository, setting up your `.env` file, and downloading the m
     ```bash
     docker-compose up --build -d
     ```
-
-    This will start the application in the background.
 
 2.  **Access the application:**
     Open your browser and navigate to `http://localhost`. The port can be changed in your `.env` file.
@@ -105,31 +117,15 @@ The recommended deployment method is using the provided script, which relies on 
 
 ## GPU Acceleration
 
-To enable GPU acceleration for the model, you need to have the NVIDIA Container Toolkit installed on your system.
+To enable GPU acceleration for the model, you need to have the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed on your system.
 
-Once you have the toolkit installed, you can enable GPU support by uncommenting the following lines in `docker-compose.yml`:
-
-```yaml
-# deploy:
-#   resources:
-#     reservations:
-#       devices:
-#         - driver: nvidia
-#           count: 1
-#           capabilities: [gpu]
-```
-
-You will also need to set the `DEVICE` environment variable to `cuda` in your `.env` file:
-
-```
-DEVICE=cuda
-```
+Once you have the toolkit installed, you can enable GPU support by uncommenting the `deploy` section in `docker-compose.yml` and setting `DEVICE=cuda` in your `.env` file.
 
 ## Environment Variables
 
 Create a `.env` file to configure the application. See `.env.example` for available options.
 
-- `MODEL`: `tiny`, `small`, `base_plus`, `large` (default: `tiny`)
+- `SAM2_MODEL`: `tiny`, `small`, `base_plus`, `large` (default: `tiny`)
 - `DEVICE`: `cpu`, `cuda`, `mps` (default: `cpu`)
 - `PORT`: Server port (default: 8000)
 - `CORS_ORIGINS`: Comma-separated list of allowed origins.

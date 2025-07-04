@@ -1,4 +1,12 @@
-import { Application, Assets, Container, Rectangle, Sprite } from "pixi.js";
+import {
+  Application,
+  Assets,
+  Container,
+  FederatedPointerEvent,
+  Graphics,
+  Rectangle,
+  Sprite,
+} from "pixi.js";
 
 interface PixiAppConfig {
   baseImage: string;
@@ -10,6 +18,11 @@ interface PixiAppConfig {
 export class PixiApp {
   private app: Application;
   private onMaskClick: (mask: Sprite, segmentId: number) => void = () => {};
+  private mouseDown = false;
+  private lastPosition: { x: number; y: number } | null = null;
+  private brushSize = 200;
+  private selectionMask: Graphics | null = null;
+  private selectionOverlay: Graphics | null = null;
 
   constructor() {
     this.app = new Application();
@@ -50,15 +63,176 @@ export class PixiApp {
     maskContainer.label = "maskContainer";
     this.app.stage.addChild(maskContainer);
 
+    // Initialize selection components
+    this.initializeSelection();
+
     this.app.canvas.style.maxWidth = "100%";
     this.app.canvas.style.maxHeight = "100%";
     this.app.canvas.style.objectFit = "contain";
+  }
+
+  private initializeSelection(): void {
+    const baseImage = this.app.stage.getChildByLabel("baseImage") as Sprite;
+    if (!baseImage) return;
+
+    // Create the selection mask (invisible graphics object used for masking)
+    this.selectionMask = new Graphics();
+    this.selectionMask.label = "selectionMask";
+
+    // Create the overlay that covers the entire image
+    this.selectionOverlay = new Graphics();
+    this.selectionOverlay.label = "selectionOverlay";
+
+    // Draw the overlay to cover the entire base image
+    this.selectionOverlay
+      .rect(0, 0, baseImage.width, baseImage.height)
+      .fill({ color: 0x0066ff, alpha: 0.4 }); // Semi-transparent blue
+
+    // Apply the selection mask to the overlay
+    this.selectionOverlay.mask = this.selectionMask;
+
+    // Add both to the stage
+    this.app.stage.addChild(this.selectionMask);
+    this.app.stage.addChild(this.selectionOverlay);
   }
 
   public setOnMaskClick(
     callback: (mask: Sprite, segmentId: number) => void
   ): void {
     this.onMaskClick = callback;
+  }
+
+  public setBrushSize(size: number): void {
+    this.brushSize = size;
+  }
+
+  private onPointerDown = (event: FederatedPointerEvent) => {
+    this.mouseDown = true;
+    const { x, y } = event.getLocalPosition(this.app.stage);
+    this.lastPosition = { x, y };
+
+    // Start drawing on the selection mask
+    if (this.selectionMask) {
+      this.selectionMask
+        .circle(x, y, this.brushSize / 2)
+        .fill({ color: 0xffffff });
+    }
+  };
+
+  private onPointerMove = (event: FederatedPointerEvent) => {
+    if (!this.mouseDown || !this.selectionMask) return;
+
+    const localPos = event.getLocalPosition(this.app.stage);
+
+    if (this.lastPosition) {
+      // Draw a line from last position to current position on the selection mask
+      this.selectionMask
+        .moveTo(this.lastPosition.x, this.lastPosition.y)
+        .lineTo(localPos.x, localPos.y)
+        .stroke({
+          width: this.brushSize,
+          color: 0xffffff,
+          cap: "round",
+          join: "round",
+        });
+
+      // Also add a circle at the current position for smooth drawing
+      this.selectionMask
+        .circle(localPos.x, localPos.y, this.brushSize / 2)
+        .fill({ color: 0xffffff });
+    }
+
+    this.lastPosition = { x: localPos.x, y: localPos.y };
+  };
+
+  private onPointerUp = () => {
+    this.mouseDown = false;
+    this.lastPosition = null;
+  };
+
+  private onPointerLeave = () => {
+    this.mouseDown = false;
+    this.lastPosition = null;
+  };
+
+  public enableDrawingMode(): void {
+    this.app.stage.eventMode = "static";
+    this.app.stage.on("pointerdown", this.onPointerDown);
+    this.app.stage.on("pointermove", this.onPointerMove);
+    this.app.stage.on("pointerup", this.onPointerUp);
+    this.app.stage.on("pointerleave", this.onPointerLeave);
+  }
+
+  public disableDrawingMode(): void {
+    this.app.stage.eventMode = "auto";
+    this.app.stage.off("pointerdown", this.onPointerDown);
+    this.app.stage.off("pointermove", this.onPointerMove);
+    this.app.stage.off("pointerup", this.onPointerUp);
+    this.app.stage.off("pointerleave", this.onPointerLeave);
+  }
+
+  public clearDrawing(): void {
+    // Clear the selection mask
+    if (this.selectionMask) {
+      this.selectionMask.clear();
+    }
+  }
+
+  public setSelectionVisible(visible: boolean): void {
+    if (this.selectionOverlay) {
+      this.selectionOverlay.visible = visible;
+    }
+  }
+
+  public setSelectionOpacity(opacity: number): void {
+    if (this.selectionOverlay) {
+      this.selectionOverlay.alpha = opacity;
+    }
+  }
+
+  public async getSelectionMaskAsBase64(): Promise<string> {
+    if (!this.selectionMask) {
+      throw new Error("Selection mask not found");
+    }
+
+    const baseImage = this.app.stage.getChildByLabel("baseImage") as Sprite;
+    if (!baseImage) {
+      throw new Error("Base image not found");
+    }
+
+    const tempContainer = new Container();
+
+    const background = new Graphics();
+    background
+      .rect(0, 0, baseImage.width, baseImage.height)
+      .fill({ color: 0x000000 }); // Black background
+
+    const clonedMask = new Graphics();
+    clonedMask.context = this.selectionMask.context.clone();
+
+    tempContainer.addChild(background);
+    tempContainer.addChild(clonedMask);
+
+    const texture = this.app.renderer.generateTexture({
+      target: tempContainer,
+      frame: new Rectangle(0, 0, baseImage.width, baseImage.height),
+    });
+
+    const extract = this.app.renderer.extract;
+    const dataUrl = await extract.base64(new Sprite(texture));
+
+    texture.destroy();
+    tempContainer.destroy({ children: true });
+
+    return dataUrl;
+  }
+
+  public hasSelection(): boolean {
+    return (
+      this.selectionMask !== null &&
+      this.selectionMask.getBounds().width > 0 &&
+      this.selectionMask.getBounds().height > 0
+    );
   }
 
   public async updateBaseImage(newImage: string): Promise<void> {
@@ -71,6 +245,14 @@ export class PixiApp {
     }
     const imageTexture = await Assets.load(newImage);
     baseImageSprite.texture = imageTexture;
+
+    // Update the selection overlay to match the new image dimensions
+    if (this.selectionOverlay) {
+      this.selectionOverlay.clear();
+      this.selectionOverlay
+        .rect(0, 0, baseImageSprite.width, baseImageSprite.height)
+        .fill({ color: 0x0066ff, alpha: 0.4 });
+    }
   }
 
   public async addMask(mask: string, segmentId: number): Promise<void> {

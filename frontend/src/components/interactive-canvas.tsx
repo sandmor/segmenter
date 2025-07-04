@@ -8,14 +8,17 @@ const InteractiveCanvas: React.FC = () => {
   const {
     originalImage,
     masks,
-    compositeMask,
+    semanticMask,
     colorMap,
     displaySemanticMask,
-    compositeOpacity,
+    semanticOpacity,
     setPixiApp,
     setSelectedMask,
     setIsDownloadDialogOpen,
     setMaskDataURL,
+    isDrawing,
+    segmentationMode,
+    brushSize,
   } = useStore();
   const pixiContainerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PixiApp | null>(null);
@@ -33,6 +36,32 @@ const InteractiveCanvas: React.FC = () => {
   useEffect(() => {
     masksRef.current = masks;
   }, [masks]);
+
+  useEffect(() => {
+    if (appRef.current) {
+      if (isDrawing) {
+        appRef.current.enableDrawingMode();
+      } else {
+        appRef.current.disableDrawingMode();
+      }
+    }
+  }, [isDrawing]);
+
+  useEffect(() => {
+    if (appRef.current) {
+      if (segmentationMode === "paint") {
+        appRef.current.enableDrawingMode();
+      } else {
+        appRef.current.disableDrawingMode();
+      }
+    }
+  }, [segmentationMode]);
+
+  useEffect(() => {
+    if (appRef.current) {
+      appRef.current.setBrushSize(brushSize);
+    }
+  }, [brushSize]);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
@@ -76,6 +105,7 @@ const InteractiveCanvas: React.FC = () => {
 
           app.setOnMaskClick(
             (clickedMaskSprite: PIXI.Sprite, segmentId: number) => {
+              if (segmentationMode === "paint") return;
               const apiMask = masksRef.current.find(
                 (m) => m.segment_id === segmentId
               );
@@ -119,10 +149,10 @@ const InteractiveCanvas: React.FC = () => {
           await appRef.current.clearMasks();
         }
 
-        if (compositeMask) {
-          appRef.current.setSemanticMask(compositeMask, {
+        if (semanticMask) {
+          appRef.current.setSemanticMask(semanticMask, {
             visible: displaySemanticMask,
-            opacity: compositeOpacity,
+            opacity: semanticOpacity,
           });
         }
       }
@@ -131,9 +161,9 @@ const InteractiveCanvas: React.FC = () => {
     initOrUpdatePixi();
   }, [
     originalImage,
-    compositeOpacity,
+    semanticOpacity,
     highlightedRegionMask,
-    compositeMask,
+    semanticMask,
     masks,
     colorMap,
     displaySemanticMask,
@@ -141,10 +171,18 @@ const InteractiveCanvas: React.FC = () => {
     setSelectedMask,
     setIsDownloadDialogOpen,
     setMaskDataURL,
+    segmentationMode,
   ]);
 
   const handleMouseMove = async (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!appRef.current || !pixiContainerRef.current || !compositeMask) return;
+    if (
+      !appRef.current ||
+      !pixiContainerRef.current ||
+      !semanticMask ||
+      isDrawing ||
+      segmentationMode === "paint"
+    )
+      return;
 
     const canvas = appRef.current.getCanvas();
 

@@ -66,6 +66,40 @@ async def auto_segment_image(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Auto-segmentation failed: {str(e)}")
 
+@router.post("/segment/mask")
+async def segment_with_mask(
+    file: UploadFile = File(...),
+    selection_mask: UploadFile = File(...),
+    ):
+    """Segment an image using a selection mask.
+
+    Args:
+        file (UploadFile, optional): The image file to segment. Defaults to File(...).
+        selection_mask (UploadFile, optional): The selection mask file to use. Defaults to File(...).
+    """
+    try:
+        if file.content_type and not file.content_type.startswith("image/"):
+            return {"error": "Invalid file type. Please upload an image."}
+        if selection_mask.content_type and not selection_mask.content_type.startswith("image/"):
+            return {"error": "Invalid file type. Please upload an image."}
+
+        image_bytes = await file.read()
+        selection_mask_bytes = await selection_mask.read()
+
+        service = get_sam2_service()
+        result = service.segment_with_mask(
+            image_bytes=image_bytes,
+            selection_mask_bytes=selection_mask_bytes
+        )
+        return JSONResponse(
+            content=result,
+            status_code=200
+        )
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Segmentation failed: {str(e)}")
+
+
 @router.post("/segment/matte")
 async def matte_segment_image(
     image: UploadFile = File(...),

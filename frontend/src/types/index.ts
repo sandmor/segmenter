@@ -10,3 +10,9 @@ export interface MatteParams {
   max_size: number;
   algorithm: "cf" | "vitmatte" | "knn" | "lbdm" | "lkm";
 }
+
+export interface SegmentationParameters {
+  pointsPerSide: number;
+  predIoUThresh: number;
+  stabilityScoreThresh: number;
+}

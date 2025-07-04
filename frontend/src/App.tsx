@@ -1,5 +1,4 @@
 import useStore from "./store";
-import axios from "axios";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
@@ -13,17 +12,13 @@ function App() {
     file,
     setFile,
     setOriginalImage,
-    setMasks,
     isSegmenting,
-    setIsSegmenting,
-    pointsPerSide,
-    predIoUThresh,
-    stabilityScoreThresh,
-    setCompositeMask,
-    setColorMap,
     reset,
     masks,
     originalImage,
+    segmentationMode,
+    segmentAuto,
+    segmentWithMask,
   } = useStore();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,25 +37,11 @@ function App() {
     }
   };
 
-  const handleSegment = async () => {
-    if (!file) return;
-
-    setIsSegmenting(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("points_per_side", pointsPerSide.toString());
-    formData.append("pred_iou_thresh", predIoUThresh.toString());
-    formData.append("stability_score_thresh", stabilityScoreThresh.toString());
-
-    try {
-      const response = await axios.post("/api/v1/segment/auto", formData);
-      setMasks(response.data.segments);
-      setCompositeMask(response.data.composite_mask);
-      setColorMap(response.data.color_map);
-    } catch (error) {
-      console.error("Error segmenting image:", error);
-    } finally {
-      setIsSegmenting(false);
+  const handleSegment = () => {
+    if (segmentationMode === "auto") {
+      segmentAuto();
+    } else {
+      segmentWithMask();
     }
   };
 
